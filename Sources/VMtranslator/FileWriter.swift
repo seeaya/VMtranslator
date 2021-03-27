@@ -15,11 +15,26 @@ struct FileWriter {
 	///   - url: The url that was used as input. The output will have the same name but with the `.asm` extension.
 	/// - Throws: If the file could not be written to.
 	func write(instructions: [CommentedInstruction], to url: URL) throws {
-		// Remove the extension and add on the extension .asm to name the output file
-		let outputPath = url
-			.deletingPathExtension()
-			.lastPathComponent
-			.appending(".asm")
+		let outputPath: String
+		
+		if url.pathExtension == "vm" {
+			// Single file
+			// Remove the extension and add on the extension .asm to name the output file
+			outputPath = url
+				.deletingPathExtension()
+				.lastPathComponent
+				.appending(".asm")
+		} else if url.pathExtension == "" {
+			// Folder
+			let name = url
+				.lastPathComponent
+			
+			outputPath = name
+				.appending("/\(name).asm")
+		} else {
+			fatalError("Invalid path extension \"\(url.pathExtension)\"")
+		}
+		
 		
 		let outputFile = url
 			.deletingLastPathComponent()

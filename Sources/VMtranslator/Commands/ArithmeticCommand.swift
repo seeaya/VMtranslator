@@ -71,25 +71,17 @@ private func instructionsFor(
 		+ instructionsForLocalPush()
 }
 
-/// Stores the value used for the last label index.
-private var _lastLabelIndex = -1
-/// Returns the index to use for the next label.
-private var nextLabelIndex: Int {
-	_lastLabelIndex += 1
-	return _lastLabelIndex
-}
-
 /// Returns the instructions for performing the given binary comparison command.
 /// - Parameter binaryCompare: The binary compare command to execute.
 /// - Returns: The generated instructions.
 private func instructionFor(
 	binaryCompare: VM.ArithmeticCommand
 ) -> [CommentedInstruction] {
-	let labelIndex = nextLabelIndex
+	let labelIndex = Parser.nextLabelIndex
 	
-	let trueLabel = "CompJump\(labelIndex)True"
-	let falseLabel = "CompJump\(labelIndex)False"
-	let endLabel = "CompJump\(labelIndex)End"
+	let trueLabel = "$CompJump\(labelIndex)True"
+	let falseLabel = "$CompJump\(labelIndex)False"
+	let endLabel = "$CompJump\(labelIndex)End"
 	
 	return [
 		instructionsForLocalPop(),

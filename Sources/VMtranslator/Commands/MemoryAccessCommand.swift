@@ -41,12 +41,18 @@ extension VM {
 // MARK:- VM.MemoryAccessCommand conversion
 extension VM.MemoryAccessCommand {
 	/// Returns the instructions that will execute the command.
-	var instructions: [CommentedInstruction] {
+	/// - Parameter filename: The name of the file that the instructions are in.
+	/// - Returns: The generated instructions.
+	func instructions(forFilename filename: String) -> [CommentedInstruction] {
 		switch self {
 		case .push(segment: let segment, offset: let offset):
-			return instructionsForPushCommand(offset: offset, segment: segment)
+			return instructionsForPushCommand(offset: offset
+																				, segment: segment,
+																				filename: filename)
 		case .pop(segment: let segment, offset: let offset):
-			return instructionsForPopCommand(offset: offset, segment: segment)
+			return instructionsForPopCommand(offset: offset,
+																			 segment: segment,
+																			 filename: filename)
 		}
 	}
 }
@@ -56,13 +62,15 @@ extension VM.MemoryAccessCommand {
 /// - Parameters:
 ///   - offset: The offset from the segment's base.
 ///   - segment: The segment to pop to.
+///   - filename: The name of the file that the instructions are in.
 /// - Returns: The generated instructions.
 private func instructionsForPopCommand(
 	offset: Int,
-	segment: VM.MemorySegment
+	segment: VM.MemorySegment,
+	filename: String
 ) -> [CommentedInstruction] {
 	let isPointer = segment == .pointer || segment == .temp || segment == .static
-	let base = baseFor(segment: segment, offset: offset)
+	let base = baseFor(segment: segment, offset: offset, filename: filename)
 	let actualOffset = segment == .static ? 0 : offset
 	
 	return [
@@ -98,10 +106,12 @@ private func instructionsForPopCommand(
 /// - Parameters:
 ///   - offset: The offset from the segment's base.
 ///   - segment: The segment to push from.
+///   - filename: The name of the file that the instructions are in.
 /// - Returns: The generated instructions.
 private func instructionsForPushCommand(
 	offset: Int,
-	segment: VM.MemorySegment
+	segment: VM.MemorySegment,
+	filename: String
 ) -> [CommentedInstruction] {
 	if (segment == .constant) {
 		return [
@@ -114,7 +124,7 @@ private func instructionsForPushCommand(
 	}
 	
 	let isPointer = segment == .pointer || segment == .temp || segment == .static
-	let base = baseFor(segment: segment, offset: offset)
+	let base = baseFor(segment: segment, offset: offset, filename: filename)
 	let actualOffset = segment == .static ? 0 : offset
 	
 	return [ (Instruction.aInstruction(base), nil)]
@@ -140,15 +150,19 @@ private func instructionsForPushCommand(
 /// - Parameters:
 ///   - segment: The segment.
 ///   - offset: The offset from the segment's base.
+///   - filename: The name of the file that the instructions are in.
 /// - Returns: The segment's base identifier.
-private func baseFor(segment: VM.MemorySegment, offset: Int) -> Literal {
+private func baseFor(segment: VM.MemorySegment,
+										 offset: Int,
+										 filename: String
+) -> Literal {
 	switch segment {
 	case .argument:
 		return .identifier("ARG")
 	case .local:
 		return .identifier("LCL")
 	case .static:
-		return .identifier("Xxx.\(offset)")
+		return .identifier("\(filename).\(offset)")
 	case .constant:
 		fatalError("Internal error")
 	case .this:

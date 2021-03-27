@@ -9,6 +9,22 @@ import Foundation
 
 /// A type that can parse a VM file.
 struct Parser {
+	/// Stores the value used for the last label index.
+	private static var _lastLabelIndex = -1
+	/// Returns the index to use for the next label.
+	static var nextLabelIndex: Int {
+		_lastLabelIndex += 1
+		return _lastLabelIndex
+	}
+	
+	private static var _lastCallIndex = -1
+	static var nextCallIndex: Int {
+		_lastCallIndex += 1
+		return _lastCallIndex
+	}
+	
+	static var currentFunctionName: String?
+	
 	/// Parses the VM file or directory of VM files at the given url.
 	/// - Parameter url: The url of the vm file to parse or the url of a directory which includes the vm files to parse.
 	/// - Throws: If the file(s) couldn't be parsed.
@@ -17,7 +33,7 @@ struct Parser {
 		fileAt url: URL
 	) throws -> [([CommentedCommand], String)] {
 		let sourceURLs: [URL]
-
+		
 		if url.pathExtension == "vm" {
 			// Single file
 			sourceURLs = [inputURL]
@@ -42,7 +58,7 @@ struct Parser {
 		return try sourceURLs.map { (try parse(vmFileAt: $0), $0.lastPathComponent) }
 	}
 }
-	
+
 // MARK:- Helper functions
 private extension Parser {
 	/// Parses an individual VM file.
@@ -210,18 +226,18 @@ private extension Parser {
 		
 		switch name {
 		case ("function"):
-			guard let numberOfLocals = Int(arguments[2]) else {
+			guard let numberOfLocals = Int(arguments[1]) else {
 				throw Error.invalidNumberOfLocals(lineNumber: lineNumber,
-																					numberOfLocals: arguments[2])
+																					numberOfLocals: arguments[1])
 			}
-			return .functionCall(.function(name: String(arguments[1]),
-																		 argumentCount: numberOfLocals))
+			return .functionCall(.function(name: String(arguments[0]),
+																		 localVariableCount: numberOfLocals))
 		case ("call"):
-			guard let argumentCount = Int(arguments[2]) else {
+			guard let argumentCount = Int(arguments[1]) else {
 				throw Error.invalidArgumentCount(lineNumber: lineNumber,
-																				 argumentCount: arguments[2])
+																				 argumentCount: arguments[1])
 			}
-			return .functionCall(.call(name: String(arguments[1]),
+			return .functionCall(.call(name: String(arguments[0]),
 																 argumentCount: argumentCount))
 		default:
 			fatalError("Internal Error")
@@ -262,13 +278,20 @@ private extension Parser {
 			throw Error.invalidNumberOfArguments(lineNumber: lineNumber,
 																					 count: count,
 																					 expected: 2)
+			
+		// Function calling commands
+		case (let name, _) where ["function", "call", "return"].contains(name):
+			return try parseFunctionCallCommand(named: name,
+																					arguments: Array(components.dropFirst()),
+																					lineNumber: lineNumber)
+			
 		// Program flow commands
 		case (let name, 1)
 					where programFlowCommand(named: name,
 																	 symbol: String(components[1])) != nil:
 			
 			return programFlowCommand(named: name, symbol: String(components[1]))!
-		
+			
 		case (let name, let count)
 					where programFlowCommand(named: name,
 																	 symbol: String(components[1])) != nil:
@@ -276,12 +299,7 @@ private extension Parser {
 			throw Error.invalidNumberOfArguments(lineNumber: lineNumber,
 																					 count: count,
 																					 expected: 1)
-		// Function calling commands
-		case (let name, _) where ["function", "call", "return"].contains(name):
-			return try parseFunctionCallCommand(named: name,
-																					arguments: Array(components.dropFirst()),
-																					lineNumber: lineNumber)
-			
+		
 		// Invalid commands
 		case (let commandName, _):
 			throw Error.invalidCommandName(lineNumber: lineNumber,

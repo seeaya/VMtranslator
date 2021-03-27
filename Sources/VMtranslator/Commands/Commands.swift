@@ -29,14 +29,16 @@ typealias CommentedCommand = (command: VM.Command?, rawValue: String, comment: S
 // MARK: Instruction conversion
 extension VM.Command {
 	/// The instructions for performing the command.
-	var instructions: [CommentedInstruction] {
+	/// - Parameter filename: The name of the file the instructions are in.
+	/// - Returns: The generated instructions.
+	func instructions(forFilename filename: String) -> [CommentedInstruction] {
 		switch self {
 		case .arithmetic(let command):
 			return command.instructions
 		case .functionCall(let command):
 			return command.instructions
 		case .memoryAccess(let command):
-			return command.instructions
+			return command.instructions(forFilename: filename)
 		case .programFlow(let command):
 			return command.instructions
 		}
